@@ -95,3 +95,5 @@ wp-content.txt
 .DS_Store
 
 *.sqlite3
+
+doctix/migrations/

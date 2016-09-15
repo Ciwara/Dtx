@@ -87,3 +87,11 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+doctix/settings_local.py
+
+wp-content.txt
+
+.DS_Store
+
+*.sqlite3

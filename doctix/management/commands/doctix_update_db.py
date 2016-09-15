@@ -9,7 +9,7 @@ from doctix.models import (Appointment, Doctor, Department, Specialtie,
                            PersonalClinicHour)
 
 
-@kronos.register('* * * * * *')
+@kronos.register('1 * * * * *')
 class Command(BaseCommand):
     help = 'Closes the specified apptts for voting'
 

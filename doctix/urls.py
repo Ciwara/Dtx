@@ -15,11 +15,23 @@ Including another URLconf
 """
 from django.conf import settings
 from django.conf.urls import url, include, patterns
-from django.contrib import admin
 from django.views.generic.base import TemplateView
 
-from fondasms import views as fonda_views
+from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    url(r'^$', TemplateView.as_view(template_name="homepage.html"),),
+    url(r'^fullcalendar/',
+        TemplateView.as_view(template_name="fullcalendar.html"), name='fullcalendar'),
+    url(r'^schedule/', include('schedule.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += patterns(
+        '',
+        url(
+            r'^site_media/(?P<path>.*)$',
+            'django.views.static.serve',
+            {'document_root': settings.MEDIA_ROOT, 'show_indexes': True}),
+    )

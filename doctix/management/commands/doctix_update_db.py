@@ -1,5 +1,7 @@
 import sys
+import re
 import kronos
+import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -21,8 +23,6 @@ class Command(BaseCommand):
 
         # retrives the list of all posts in the blog. Optional: you can supply
         # filters and fields to sort by.
-
-        print('Hello, world!')
         from django.conf import settings
         wp = Client('http://doctix.net/xmlrpc.php',
                     settings.LOGIN_WP, settings.PASS_WP)
@@ -146,10 +146,10 @@ class Command(BaseCommand):
                     'guid': app.guid
                 }
                 for custom in app.custom_fields:
-                    # if custom['key'] == 'iva_appt_appointmentdate':
-                    #     data.update({"appointmentdate": custom['value']})
-                    # if custom['key'] == 'iva_appt_appointmenttime':
-                    #     data.update({"appointmenttime": custom['value']})
+                    if custom['key'] == 'iva_appt_appointmentdate':
+                        appointmentdate = int(custom['value'])
+                    if custom['key'] == 'iva_appt_appointmenttime':
+                        appointmenttime = custom['value']
                     if custom['key'] == 'iva_appt_department':
                         data.update({"department": Department.objects.get(
                             post_id=int(custom['value']))})
@@ -168,13 +168,26 @@ class Command(BaseCommand):
                         data.update({"phone": custom['value']})
                     if custom['key'] == 'iva_appt_status':
                         data.update({"status": custom['value']})
-                print(data)
+
+                data.update({"appointmentdatetime":
+                             self.parse_date(appointmentdate, appointmenttime)})
                 appoint = Appointment(**data)
                 appoint.save()
-
                 self.stdout.write(self.style.SUCCESS(
                     'Successfully save appointment : {}'.format(app.title)))
             offset = offset + increment
+
+    def parse_date(self, timestamp, time_):
+        date = datetime.date.fromtimestamp(timestamp)
+        hrs = int(re.search('(?<="appt_time_hrs";s:2:")\w+', time_).group(0))
+        mnts = int(re.search('(?<="appt_time_mnts";s:2:")\w+', time_).group(0))
+        period = re.search(
+            '(?<="appt_time_period";s:2:")\w+', time_).group(0)
+        print(time_)
+        if period == "PM":
+            hrs += 12 if hrs < 12 else -12
+        print(date.year, date.month, date.day, hrs, mnts)
+        return datetime.datetime(date.year, date.month, date.day, hrs, mnts)
 
 """
 [{'value': '', 'id': '16218', 'key': 'iva_hrs_Friday_close'},

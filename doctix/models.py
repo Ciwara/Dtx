@@ -64,8 +64,7 @@ class Appointment(models.Model):
     date_modified = models.DateTimeField(
         'Date modified', null=True, blank=True)
     doctor = models.ForeignKey(Doctor, verbose_name=u'Doctor')
-    appointmentdate = models.DateField('Date appointment', null=True)
-    appointmenttime = models.TimeField(max_length=200, null=True)
+    appointmentdatetime = models.DateTimeField('Date appointment', null=True)
     department = models.ForeignKey(Department, verbose_name=u'Department')
     description = models.CharField(max_length=200)
     dob = models.DateTimeField(max_length=200, null=True, blank=True)

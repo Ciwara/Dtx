@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'doctix',
+    'fondasms',
     'schedule',
+    'kronos',
 ]
 
 MIDDLEWARE_CLASSES = [

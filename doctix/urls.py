@@ -16,8 +16,8 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls import url, include, patterns
 from django.views.generic.base import TemplateView
-
 from django.contrib import admin
+from fondasms import views as fonda_views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -25,6 +25,18 @@ urlpatterns = [
     url(r'^fullcalendar/',
         TemplateView.as_view(template_name="fullcalendar.html"), name='fullcalendar'),
     url(r'^schedule/', include('schedule.urls')),
+
+    # # Android API
+    url(r'^fondasms/?$', fonda_views.fondasms_handler,
+        {'handler_module': 'doctix.fondasms_handlers',
+         'send_automatic_reply': False,
+         'automatic_reply_via_handler': False,
+         'automatic_reply_text': ("Merci.")},
+        name='fondasms'),
+
+    url(r'^fondasms/test/?$',
+        TemplateView.as_view(template_name="fondasms_tester.html"),
+        name='fondasms_tester'),
 ]
 
 if settings.DEBUG:

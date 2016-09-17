@@ -10,7 +10,7 @@ import logging
 from django.conf import settings
 from django.utils import timezone
 
-from fondasms.utils import datetime_from_timestamp
+from fondasms.utils import datetime_from_timestamp, outgoing_for
 
 from doctix.numbers import (normalized_phonenumber,
                             operator_from_malinumber)
@@ -106,6 +106,8 @@ def handle_outgoing_request(payload):
     outgoings = []
     for message in SMSMessage.objects.filter(
             direction=SMSMessage.OUTGOING, handled=False)[:10]:
+        outgoings.append(outgoing_for(to=message.identity,
+                                      message=message.content))
         message.handled = True
         message.save()
     return outgoings

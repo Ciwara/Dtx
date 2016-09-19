@@ -14,10 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls import url, include, patterns
+from django.conf.urls import url, include, static
 from django.views.generic.base import TemplateView
 from django.contrib import admin
 from fondasms import views as fonda_views
+
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -40,10 +41,12 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += patterns(
-        '',
-        url(
-            r'^site_media/(?P<path>.*)$',
-            'django.views.static.serve',
-            {'document_root': settings.MEDIA_ROOT, 'show_indexes': True}),
-    )
+    print("DEBUG")
+    # urlpatterns + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # urlpatterns += patterns(
+    #     '',
+    #     url(
+    #         r'^site_media/(?P<path>.*)$',
+    #         'django.views.static.serve',
+    #         {'document_root': settings.MEDIA_ROOT, 'show_indexes': True}),
+    # )

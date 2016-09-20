@@ -29,7 +29,7 @@ urlpatterns = [
 
     # # Android API
     url(r'^fondasms/?$', fonda_views.fondasms_handler,
-        {'handler_module': 'doctix.fondasms_handlers',
+        {'handler_module': 'doctix.sms.fondasms_handlers',
          'send_automatic_reply': False,
          'automatic_reply_via_handler': False,
          'automatic_reply_text': ("Merci.")},

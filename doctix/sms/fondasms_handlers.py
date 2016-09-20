@@ -15,6 +15,7 @@ from fondasms.utils import datetime_from_timestamp, outgoing_for
 from doctix.numbers import (normalized_phonenumber,
                             operator_from_malinumber)
 from doctix.models import SMSMessage
+from doctix.sms.handler import doctix_sms_handler
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,6 @@ def automatic_reply_handler(payload):
 def handle_incoming_sms(payload):
     logger.debug("handle_incoming_sms")
     # on SMS received
-    print(payload)
     return handle_sms_call(payload)
 
 
@@ -75,6 +75,20 @@ def handle_sms_call(payload, event_type=None):
         logger.critical("Unable to save SMS into DB: {}".format(e))
         raise
 
+    # call specific handler
+    msg_id = msg.id
+    if doctix_sms_handler(msg):
+        # we re-get the message from the DB
+        # since handlers are allowed to destroy it (spam, etc)
+        try:
+            msg = SMSMessage.objects.get(id=msg_id)
+        except SMSMessage.DoesNotExist:
+            pass
+        # might already be marked handled
+        else:
+            if not msg.handled:
+                msg.handled = True
+                msg.save()
     # send reply/pending messages
     return handle_outgoing_request(payload)
 

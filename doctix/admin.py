@@ -21,7 +21,7 @@ class AppointmentAdmin(admin.ModelAdmin):
     """docstring for AppointmentAdmin"""
     list_display = (
         'post_id', 'email', 'appointmentdatetime', 'description', 'phone', 'status')
-    list_filter = ('status', 'date', 'email', 'phone')
+    list_filter = ('status', 'doctor', 'date', 'email', 'phone')
 
 
 class PersonalClinicHourInline(admin.TabularInline):

@@ -58,6 +58,16 @@ class Doctor(models.Model):
 
 @python_2_unicode_compatible  # only if you need to support Python 2
 class Appointment(models.Model):
+
+    CONFIRMED = 'confirmed'
+    UNCONFIRMED = 'unconfirmed'
+    CANCELLED = 'cancelled'
+    STATUS = {
+        CONFIRMED: _("confirmed"),
+        UNCONFIRMED: _("unconfirmed"),
+        CANCELLED: _("cancelled")
+    }
+
     post_id = models.IntegerField(primary_key=True)
     slug = models.CharField("Slug", max_length=200)
     date = models.DateTimeField('Date published')
@@ -70,14 +80,18 @@ class Appointment(models.Model):
     dob = models.DateTimeField(max_length=200, null=True, blank=True)
     email = models.EmailField("E-mail", max_length=250, null=True, blank=True)
     lastname = models.CharField(max_length=200)
+    firstname = models.CharField(max_length=200)
     phone = models.CharField(max_length=200)
-    status = models.CharField(max_length=200)
+    status = models.CharField(max_length=200, choices=STATUS.items())
     update_date = models.DateTimeField('Date update', default=timezone.now)
     guid = models.CharField(max_length=200)
 
     def __str__(self):
         return "{} {} {} {}".format(self.lastname, self.email,
                                     self.status, self.phone)
+
+    def full_name(self):
+        return "{first} {last}".format(first=self.firstname, last=self.lastname)
 
 
 @python_2_unicode_compatible  # only if you need to support Python 2

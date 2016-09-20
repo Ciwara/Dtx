@@ -1,14 +1,19 @@
-import sys
 import re
 import kronos
 import datetime
+import pytz
 
-from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
+from django.core.management.base import BaseCommand
+from django.conf import settings
 
-from wordpress_xmlrpc import Client, WordPressPost
-from wordpress_xmlrpc.methods.posts import GetPosts, GetPost
+from wordpress_xmlrpc import Client
+from wordpress_xmlrpc.methods.posts import GetPosts
 from doctix.models import (Appointment, Doctor, Department, Specialtie,
-                           PersonalClinicHour)
+                           PersonalClinicHour, SMSMessage)
+
+from schedule.models import Calendar
+from schedule.models import Event
 
 
 @kronos.register('1 * * * * *')
@@ -31,11 +36,14 @@ class Command(BaseCommand):
         self.update_appointment(wp)
         self.stdout.write(self.style.SUCCESS('Successfully update finist '))
 
+    def add_tz(self, date):
+        tz = pytz.timezone(settings.TIME_ZONE)
+        return date.replace(tzinfo=tz)
+
     def update_doctor_info(self, wp):
         """wordpress_xmlrpc.methods.options.GetOptions """
         # get pages in batches of 20
 
-        from schedule.models import Calendar
         offset = 0
         increment = 20
         while True:
@@ -47,17 +55,15 @@ class Command(BaseCommand):
                 specialty_id = self.save_specialty(doc.terms)
                 if doc.slug == "":
                     continue
-                print(doc.title, doc.slug)
-                cal, s = Calendar.objects.get_or_create(
-                    name=doc.title, slug=doc.slug)
-                print(cal)
+                cal, s = Calendar.objects.get_or_create(name=doc.title,
+                                                        slug=doc.slug)
                 data = {
                     "post_id": doc.id,
                     "slug": doc.slug,
                     "full_name": doc.title,
                     # "sms_submit": doc.sms_submit,
-                    "date": doc.date,
-                    "date_modified": doc.date_modified,
+                    "date": self.add_tz(doc.date),
+                    "date_modified":  self.add_tz(doc.date_modified),
                     "sticky": doc.sticky,
                     "link": doc.link,
                     "specialty": specialty_id,
@@ -75,8 +81,8 @@ class Command(BaseCommand):
                         data.update({"email": custom['value']})
                 doctor = Doctor(**data)
                 doctor.save()
-                self.stdout.write(self.style.SUCCESS(
-                    'Successfully save info. {}'.format(doc.title)))
+                # self.stdout.write(self.style.SUCCESS(
+                #     'Successfully save info. {}'.format(doc.title)))
 
             offset = offset + increment
         # update_hrs_opens_closes_per_doc(doctor)
@@ -97,8 +103,8 @@ class Command(BaseCommand):
             specialty.save()
             break
 
-        self.stdout.write(self.style.SUCCESS(
-            'Successfully save department : {}'.format(specialty.name)))
+        # self.stdout.write(self.style.SUCCESS(
+        #     'Successfully save department : {}'.format(specialty.name)))
         return specialty
 
     def update_department(self, wp):
@@ -115,8 +121,8 @@ class Command(BaseCommand):
                     "post_id": depart.id,
                     "slug": depart.slug,
                     "title": depart.title,
-                    "date": depart.date,
-                    "date_modified": depart.date_modified,
+                    "date":  self.add_tz(depart.date),
+                    "date_modified": self.add_tz(depart.date_modified),
                     "guid": depart.guid
                 }
                 for custom in depart.custom_fields:
@@ -124,8 +130,8 @@ class Command(BaseCommand):
                         data.update({"dept_shortinfo": custom['value']})
                 dept = Department(**data)
                 dept.save()
-                self.stdout.write(self.style.SUCCESS(
-                    'Successfully save department : {}'.format(dept.title)))
+                # self.stdout.write(self.style.SUCCESS(
+                #     'Successfully save department : {}'.format(dept.title)))
 
             offset = offset + increment
 
@@ -133,6 +139,8 @@ class Command(BaseCommand):
 
         offset = 0
         increment = 20
+
+        now = timezone.now()
         while True:
             posts = wp.call(GetPosts({'post_type': 'appointment',
                                       'number': increment, 'offset': offset}))
@@ -140,9 +148,10 @@ class Command(BaseCommand):
                 break  # no more posts returned
             for app in posts:
                 data = {
+                    'firstname': app.title,
                     'post_id': app.id,
                     'slug': app.slug,
-                    'date': app.date,
+                    'date':  self.add_tz(app.date),
                     'guid': app.guid
                 }
                 for custom in app.custom_fields:
@@ -164,62 +173,61 @@ class Command(BaseCommand):
                         data.update({"email": custom['value']})
                     if custom['key'] == 'iva_appt_lastname':
                         data.update({"lastname": custom['value']})
+                    # if custom['key'] == 'iva_appt_firstname':
+                    #     data.update({"firstname": custom['value']})
                     if custom['key'] == 'iva_appt_phone':
                         data.update({"phone": custom['value']})
                     if custom['key'] == 'iva_appt_status':
                         data.update({"status": custom['value']})
 
                 data.update({"appointmentdatetime":
-                             self.parse_date(appointmentdate, appointmenttime)})
-                appoint = Appointment(**data)
-                appoint.save()
-                self.stdout.write(self.style.SUCCESS(
-                    'Successfully save appointment : {}'.format(app.title)))
+                             self.timestamp_date_with_tz(appointmentdate, appointmenttime)})
+                appoint, s = Appointment.objects.get_or_create(**data)
+
+                phone = appoint.doctor.phone
+                if appoint.status != Appointment.CANCELLED:
+                    if not phone:
+                        print(
+                            "{} n'a pas de numéro de téléphone.".format(appoint.doctor.full_name))
+                        return
+                    data = {
+                        'direction': SMSMessage.OUTGOING,
+                        'identity': phone,
+                        'event_on': appoint.date,
+                        'text': self.format_notiv_sms_appointment(appoint),
+                        'defaults': {'created_on': now}
+                    }
+                    try:
+                        msg, created = SMSMessage.objects.get_or_create(**data)
+                    except Exception as e:
+                        print(e)
+                if appoint.status == Appointment.CONFIRMED:
+                    data = {
+                        'title': appoint.description,
+                        'start': appoint.appointmentdatetime,
+                        'end': appoint.appointmentdatetime + datetime.timedelta(minutes=30),
+                        # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
+                        # 'rule': rule,
+                        'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
+                    }
+                    event, s = Event.objects.get_or_create(**data)
+                # self.stdout.write(self.style.SUCCESS(
+                #     'Successfully save appointment : {}'.format(app.title)))
             offset = offset + increment
 
-    def parse_date(self, timestamp, time_):
+    def format_notiv_sms_appointment(self, appoint):
+        text = "Demande RDV num {id}. {full_name} {des}".format(
+            id=appoint.post_id, full_name=appoint.full_name(), des=appoint.description)
+        if len(text) == 120:
+            text = text[:117] + "..."
+        return text
+
+    def timestamp_date_with_tz(self, timestamp, time_):
         date = datetime.date.fromtimestamp(timestamp)
         hrs = int(re.search('(?<="appt_time_hrs";s:2:")\w+', time_).group(0))
         mnts = int(re.search('(?<="appt_time_mnts";s:2:")\w+', time_).group(0))
         period = re.search(
             '(?<="appt_time_period";s:2:")\w+', time_).group(0)
-        print(time_)
         if period == "PM":
             hrs += 12 if hrs < 12 else -12
-        print(date.year, date.month, date.day, hrs, mnts)
-        return datetime.datetime(date.year, date.month, date.day, hrs, mnts)
-
-"""
-[{'value': '', 'id': '16218', 'key': 'iva_hrs_Friday_close'},
-
- {'value': '18:00', 'id': '16216', 'key': 'iva_hrs_Friday_closes'},
- {'value': '09:00', 'id': '16217', 'key': 'iva_hrs_Friday_opens'},
- {'value': 'on', 'id': '16206', 'key': 'iva_hrs_Monday_close'},
- {'value': '18:00', 'id': '16204', 'key': 'iva_hrs_Monday_closes'},
- {'value': '09:00', 'id': '16205', 'key': 'iva_hrs_Monday_opens'},
-  {'value': '', 'id': '16221', 'key': 'iva_hrs_Saturday_close'},
-  {'value': '18:00', 'id': '16219', 'key': 'iva_hrs_Saturday_closes'},
-  {'value': '09:00', 'id': '16220', 'key': 'iva_hrs_Saturday_opens'},
-  {'value': '', 'id': '16224', 'key': 'iva_hrs_Sunday_close'},
-  {'value': '18:00', 'id': '16222', 'key': 'iva_hrs_Sunday_closes'},
-  {'value': '09:00', 'id': '16223', 'key': 'iva_hrs_Sunday_opens'},
-  {'value': '', 'id': '16215', 'key': 'iva_hrs_Thursday_close'},
-  {'value': '18:00', 'id': '16213', 'key': 'iva_hrs_Thursday_closes'},
-  {'value': '09:00', 'id': '16214', 'key': 'iva_hrs_Thursday_opens'},
-  {'value': '12', 'id': '16225', 'key': 'iva_hrs_timeformat'},
-  {'value': '', 'id': '16209', 'key': 'iva_hrs_Tuesday_close'},
-  {'value': '18:00', 'id': '16207', 'key': 'iva_hrs_Tuesday_closes'},
-  {'value': '09:00', 'id': '16208', 'key': 'iva_hrs_Tuesday_opens'},
-  {'value': '', 'id': '16212', 'key': 'iva_hrs_Wednesday_close'},
-  {'value': '18:00', 'id': '16210', 'key': 'iva_hrs_Wednesday_closes'},
-  {'value': '09:00', 'id': '16211', 'key': 'iva_hrs_Wednesday_opens'},
-  {'value': 'fullwidth', 'id': '16196', 'key': 'sidebar_options'},
-  {'value': 'default', 'id': '16188', 'key': 'slide_template'},
-  {'value': 'left', 'id': '16189', 'key': 'sub_styling'},
-  {'value': 'a:5:{s:5:"image";s:0:"";s:5:"color";s:0:"";s:6:"repeat";s:6:"repeat";s:8:"position";s:8:"left top";s:11:"attachement";s:6:"scroll";}', 'id': '16293', 'key': 'subheader_img'},
-  {'value': 'a:5:{s:5:"image";s:0:"";s:5:"color";s:0:"";s:6:"repeat";s:6:"repeat";s:8:"position";s:8:"left top";s:11:"attachement";s:6:"scroll";}', 'id': '16294', 'key': 'subheader_img'},
-  {'value': 'a:5:{s:5:"image";s:0:"";s:5:"color";s:0:"";s:6:"repeat";s:6:"repeat";s:8:"position";s:8:"left top";s:11:"attachement";s:6:"scroll";}', 'id': '16295', 'key': 'subheader_img'},
-  {'value': 'a:5:{s:5:"image";s:0:"";s:5:"color";s:0:"";s:6:"repeat";s:6:"repeat";s:8:"position";s:8:"left top";s:11:"attachement";s:6:"scroll";}', 'id': '16296', 'key': 'subheader_img'},
-  {'value': 'a:5:{s:5:"image";s:0:"";s:5:"color";s:0:"";s:6:"repeat";s:6:"repeat";s:8:"position";s:8:"left top";s:11:"attachement";s:6:"scroll";}', 'id': '16297', 'key': 'subheader_img'},
-  {'value': 'default', 'id': '16190', 'key': 'subheader_teaser_options'}]
-"""
+        return self.add_tz(datetime.datetime(date.year, date.month, date.day, hrs, mnts))

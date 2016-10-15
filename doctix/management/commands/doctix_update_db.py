@@ -28,9 +28,7 @@ class Command(BaseCommand):
 
         # retrives the list of all posts in the blog. Optional: you can supply
         # filters and fields to sort by.
-        from django.conf import settings
-        wp = Client('http://doctix.net/xmlrpc.php',
-                    settings.LOGIN_WP, settings.PASS_WP)
+        wp = Client(settings.CLIENT_URL, settings.LOGIN_WP, settings.PASS_WP)
         self.update_department(wp)
         self.update_doctor_info(wp)
         self.update_appointment(wp)
@@ -55,8 +53,9 @@ class Command(BaseCommand):
                 specialty_id = self.save_specialty(doc.terms)
                 if doc.slug == "":
                     continue
-                cal, s = Calendar.objects.get_or_create(name=doc.title,
-                                                        slug=doc.slug)
+
+                cal, s = Calendar.objects.update_or_create(name=doc.title,
+                                                           slug=doc.slug)
                 data = {
                     "post_id": doc.id,
                     "slug": doc.slug,
@@ -79,10 +78,8 @@ class Command(BaseCommand):
                         data.update({"phone": custom['value']})
                     if custom['key'] == 'iva_doctor_email':
                         data.update({"email": custom['value']})
-                doctor = Doctor(**data)
-                doctor.save()
-                # self.stdout.write(self.style.SUCCESS(
-                #     'Successfully save info. {}'.format(doc.title)))
+                doctor, created = Doctor.objects.update_or_create(
+                    post_id=doc.id, defaults=data)
 
             offset = offset + increment
         # update_hrs_opens_closes_per_doc(doctor)
@@ -102,9 +99,6 @@ class Command(BaseCommand):
             specialty = Specialtie(**data)
             specialty.save()
             break
-
-        # self.stdout.write(self.style.SUCCESS(
-        #     'Successfully save department : {}'.format(specialty.name)))
         return specialty
 
     def update_department(self, wp):
@@ -128,10 +122,9 @@ class Command(BaseCommand):
                 for custom in depart.custom_fields:
                     if custom['key'] == 'iva_dept_shortinfo':
                         data.update({"dept_shortinfo": custom['value']})
-                dept = Department(**data)
-                dept.save()
-                # self.stdout.write(self.style.SUCCESS(
-                #     'Successfully save department : {}'.format(dept.title)))
+
+                depat, created = Department.objects.update_or_create(
+                    post_id=depart.id, defaults=data)
 
             offset = offset + increment
 
@@ -146,15 +139,17 @@ class Command(BaseCommand):
                                       'number': increment, 'offset': offset}))
             if len(posts) == 0:
                 break  # no more posts returned
-            for app in posts:
+            for post in posts:
                 data = {
-                    'firstname': app.title,
-                    'post_id': app.id,
-                    'slug': app.slug,
-                    'date':  self.add_tz(app.date),
-                    'guid': app.guid
+                    'firstname': post.title,
+                    'post_id': post.id,
+                    'slug': post.slug,
+                    'date':  self.add_tz(post.date),
+                    'guid': post.guid
                 }
-                for custom in app.custom_fields:
+                for custom in post.custom_fields:
+                    if custom['key'] == 'iva_appt_gender':
+                        data.update({"gender": custom['value']})
                     if custom['key'] == 'iva_appt_appointmentdate':
                         appointmentdate = int(custom['value'])
                     if custom['key'] == 'iva_appt_appointmenttime':
@@ -164,8 +159,10 @@ class Command(BaseCommand):
                             post_id=int(custom['value']))})
                     if custom['key'] == 'iva_appt_description':
                         data.update({"description": custom['value']})
-                    # if custom['key'] == 'iva_appt_dob':
-                    #     data.update({"dob": custom['value']})
+                    if custom['key'] == 'iva_appt_dob' and custom['value'] != "":
+                        timestamp = int(custom['value'])
+                        data.update(
+                            {"dob": datetime.date.fromtimestamp(timestamp)})
                     if custom['key'] == 'iva_appt_doctor':
                         data.update({"doctor": Doctor.objects.get(
                             post_id=int(custom['value']))})
@@ -182,45 +179,51 @@ class Command(BaseCommand):
 
                 data.update({"appointmentdatetime":
                              self.timestamp_date_with_tz(appointmentdate, appointmenttime)})
-                appoint, s = Appointment.objects.get_or_create(**data)
-
+                appoint, created = Appointment.objects.update_or_create(
+                    post_id=post.id, defaults=data)
                 phone = appoint.doctor.phone
+                appoint_date = appoint.date
                 if appoint.status != Appointment.CANCELLED:
                     if not phone:
-                        print(
-                            "{} n'a pas de numéro de téléphone.".format(appoint.doctor.full_name))
-                        return
+                        # phone = 76433890
+                        continue
+                        # print(
+                        #     u"{} n'a pas de numéro de téléphone.".format(appoint.doctor.full_name))
+                        # return
                     data = {
                         'direction': SMSMessage.OUTGOING,
                         'identity': phone,
-                        'event_on': appoint.date,
-                        'text': self.format_notiv_sms_appointment(appoint),
-                        'defaults': {'created_on': now}
+                        'event_on': appoint_date,
+                        'text': appoint.format_notiv_doct_sms(),
+                        'created_on': now,
+                        # 'handled': True,
                     }
                     try:
-                        msg, created = SMSMessage.objects.get_or_create(**data)
+                        msg, created = SMSMessage.objects.update_or_create(
+                            event_on=appoint_date, defaults=data)
+                        print(created)
                     except Exception as e:
-                        print(e)
-                if appoint.status == Appointment.CONFIRMED:
-                    data = {
-                        'title': appoint.description,
-                        'start': appoint.appointmentdatetime,
-                        'end': appoint.appointmentdatetime + datetime.timedelta(minutes=30),
-                        # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
-                        # 'rule': rule,
-                        'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
-                    }
-                    event, s = Event.objects.get_or_create(**data)
-                # self.stdout.write(self.style.SUCCESS(
-                #     'Successfully save appointment : {}'.format(app.title)))
+                        print("EEE", e)
+                    if appoint.status == Appointment.CONFIRMED:
+                        data = {
+                            'title': appoint.description,
+                            'start': appoint.appointmentdatetime,
+                            'end': appoint.appointmentdatetime + datetime.timedelta(minutes=30),
+                            # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
+                            # 'rule': rule,
+                            'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
+                        }
+                        event, s = Event.objects.update_or_create(data)
+                    # self.stdout.write(self.style.SUCCESS(
+                    #     'Successfully save appointment : {}'.format(app.title)))
             offset = offset + increment
 
-    def format_notiv_sms_appointment(self, appoint):
-        text = "Demande RDV num {id}. {full_name} {des}".format(
-            id=appoint.post_id, full_name=appoint.full_name(), des=appoint.description)
-        if len(text) == 120:
-            text = text[:117] + "..."
-        return text
+    # def format_notiv_sms_appointment(self, appoint):
+    #     text = "Demande RDV num {id}. {full_name} {des}".format(
+    #         id=appoint.post_id, full_name=appoint.full_name(), des=appoint.description)
+    #     if len(text) == 120:
+    #         text = text[:117] + "..."
+    #     return text
 
     def timestamp_date_with_tz(self, timestamp, time_):
         date = datetime.date.fromtimestamp(timestamp)

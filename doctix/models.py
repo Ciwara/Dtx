@@ -16,6 +16,13 @@ class Specialtie(models.Model):
     def __str__(self):
         return "{} {}".format(self.name, self.description)
 
+    @classmethod
+    def get_or_none(cls, cid):
+        try:
+            return cls.objects.get(post_id=cid)
+        except cls.DoesNotExist:
+            return None
+
 
 @python_2_unicode_compatible  # only if you need to support Python 2
 class Department(models.Model):
@@ -33,12 +40,29 @@ class Department(models.Model):
         return "{title} {info}".format(title=self.title,
                                        info=self.dept_shortinfo)
 
+    @classmethod
+    def get_or_none(cls, cid):
+        try:
+            return cls.objects.get(post_id=cid)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create(cls, data):
+        app = cls.get_or_none(data.get('post_id'))
+        if app is None:
+            app = cls.objects.create(**data)
+        else:
+            app.objects.update(**data)
+            app.save()
+        return app
+
 
 @python_2_unicode_compatible  # only if you need to support Python 2
 class Doctor(models.Model):
     post_id = models.IntegerField(primary_key=True)
     slug = models.CharField("Slug", max_length=200)
-    full_name = models.CharField("Location", max_length=200)
+    full_name = models.CharField("Nom", max_length=200)
     location = models.CharField("Location", max_length=200)
     phone = models.IntegerField("Phone Number(s)", null=True, blank=True)
     email = models.EmailField("E-mail", max_length=250, null=True, blank=True)
@@ -51,9 +75,22 @@ class Doctor(models.Model):
     specialty = models.ForeignKey(Specialtie, verbose_name=_("Specailty"))
     calendar = models.ForeignKey(Calendar, verbose_name=_('Calendar'))
 
-    def __str__(self):
-        return "{full_name} {specialty}".format(full_name=self.full_name,
-                                                specialty=self.specialty)
+    @classmethod
+    def get_or_none(cls, cid):
+        try:
+            return cls.objects.get(post_id=cid)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create(cls, data):
+        app = cls.get_or_none(data.get('post_id'))
+        if app is None:
+            app = cls.objects.create(**data)
+        else:
+            app.update(**data)
+            app.save()
+        return app
 
 
 @python_2_unicode_compatible  # only if you need to support Python 2
@@ -67,6 +104,12 @@ class Appointment(models.Model):
         UNCONFIRMED: _("unconfirmed"),
         CANCELLED: _("cancelled")
     }
+    FEMALE = 'Female'
+    MALE = 'Male'
+    GENDERS = {
+        FEMALE: _("Femme"),
+        MALE: _("Homme"),
+    }
 
     post_id = models.IntegerField(primary_key=True)
     slug = models.CharField("Slug", max_length=200)
@@ -77,21 +120,83 @@ class Appointment(models.Model):
     appointmentdatetime = models.DateTimeField('Date appointment', null=True)
     department = models.ForeignKey(Department, verbose_name=u'Department')
     description = models.CharField(max_length=200)
-    dob = models.DateTimeField(max_length=200, null=True, blank=True)
+    dob = models.DateField(max_length=200, null=True, blank=True)
     email = models.EmailField("E-mail", max_length=250, null=True, blank=True)
     lastname = models.CharField(max_length=200)
     firstname = models.CharField(max_length=200)
+    gender = models.CharField(max_length=200, choices=GENDERS.items())
     phone = models.CharField(max_length=200)
     status = models.CharField(max_length=200, choices=STATUS.items())
     update_date = models.DateTimeField('Date update', default=timezone.now)
     guid = models.CharField(max_length=200)
 
-    def __str__(self):
-        return "{} {} {} {}".format(self.lastname, self.email,
-                                    self.status, self.phone)
-
+    @property
     def full_name(self):
         return "{first} {last}".format(first=self.firstname, last=self.lastname)
+
+    def __str__(self):
+        return "{} {} {} {}".format(self.full_name, self.email,
+                                    self.status, self.phone)
+
+    # @property
+    def format_notiv_doct_sms(self):
+        text = "Patient {full_name} {gender} {age} Motif {des}".format(
+            full_name=self.full_name, gender=self.get_gender(), age=self.get_age(), des=self.description)
+        if len(text) == 120:
+            text = text[:117] + "..."
+        return text + " Demande RDV {id} pour le {datetime}".format(id=self.post_id,
+                                                                    datetime=self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+
+    def get_gender(self):
+        if self.gender == "Male":
+            return "sexe M"
+        elif self.gender == "Female":
+            return "sexe F"
+        else:
+            return ""
+
+    def get_age(self):
+        from datetime import date
+        if not self.dob:
+            return ""
+        today = date.today()
+        year = today.year - self.dob.year - ((today.month, today.day)
+                                             < (self.dob.month, self.dob.day))
+        if year > 1:
+            p = "ans" if year > 1 else "an"
+        else:
+            p = ""
+        return "{}{}".format(year, p)
+
+    def format_doct_answer_sms(self, resp):
+        ok_list = ["ok", "yes", "accord", "oui"]
+        decline_list = ["no", "non", "pas dispo", "absent", "occupé"]
+        if len([p for p in ok_list if p in resp.lower()]) > 0:
+            text = "{} a confirmé votre RDV pour le {}. "
+        elif len([p for p in decline_list if p in resp.lower()]) > 0:
+            text = "{} n'est disponible pour le {} merci. "
+        else:
+            return None
+        text = text.format(
+            self.doctor.full_name, self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+        return text + "Prompt rétablissement."
+
+    @classmethod
+    def get_or_create(cls, data):
+        app = cls.get_or_none(data.get('post_id'))
+        if app is None:
+            app = cls.objects.create(**data)
+        else:
+            app.update(**data)
+            app.save()
+        return app
+
+    @classmethod
+    def get_or_none(cls, cid):
+        try:
+            return cls.objects.get(post_id=cid)
+        except cls.DoesNotExist:
+            return None
 
 
 @python_2_unicode_compatible  # only if you need to support Python 2

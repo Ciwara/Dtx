@@ -7,7 +7,7 @@ from __future__ import (unicode_literals, absolute_import,
 import logging
 
 from django.utils import timezone
-from doctix.models import Appointment
+from doctix.models import Appointment, Doctor
 # from snisi_sms.common import test, echo, change_passwd, ask_for_help
 
 logger = logging.getLogger(__name__)
@@ -37,38 +37,41 @@ def echo(message):
 def response_appoint(message):
     try:
         kw, args = message.content.split(" ", 1)
+        # print(args)
         post_id = args.split(" ", 1)[0]
         resp = args.split(" ", 1)[1]
     except Exception as e:
-        args = "Format SMS Invaide."
-        message.respond(args)
+        message.respond("Format SMS Invaide.")
         return True
     try:
         doc = Doctor.objects.get(phone=message.identity)
-    except:
-        pass
-    try:
-        appoint = Appointment.objects.get(post_id=post_id)
-        message.identity = appoint.phone
-        if "ok" in resp.lower() or "yes" in resp.lower():
-            args = "{doc} a valider votre rendez-vous pour {date_time}".format(
-                doc=appoint.doctor.full_name, date_time=appoint.appointmentdatetime)
-        elif "no" in resp.lower() or "non" in resp.lower():
-            args = "{doc} n est pas disponible pour {date_time}".format(
-                doc=appoint.doctor.full_name, date_time=appoint.appointmentdatetime)
     except Exception as e:
         print(e)
-        args = "{p_id} est n existe pas".format(p_id=post_id)
+    try:
+        print("Get Appointment")
+        appoint = Appointment.objects.get(post_id=post_id)
+        if appoint.phone == "":
+            return False
+        resp_ = appoint.format_doct_answer_sms(resp)
+        print("Reponse ", resp_)
+        if not resp_:
+            message.respond(
+                "Reponse incorrecte. Contactez l'assistance doctix.")
+            return True
+        args = resp_
+        message.identity = appoint.phone
+    except Exception as e:
+        print(e)
+        args = "{p_id} n existe pas".format(p_id=post_id)
     message.respond(args)
     return True
 
 
 def doctix_sms_handler(message):
 
-    # migration to non-snisi prefixed SMS
-    if message.content.startswith('d '):
-        message.text = message.content[0:]
-        message.save()
+    # if message.content.startswith('d '):
+    #     message.text = message.content[0:]
+        # message.save()
 
     logger.debug("Incoming SMS from {}: {}".format(
         message.identity, message.content))

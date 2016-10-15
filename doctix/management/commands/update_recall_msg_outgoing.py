@@ -10,7 +10,7 @@ from doctix.models import SMSMessage, Appointment
 logger = logging.getLogger(__name__)
 
 
-@kronos.register('*/30 * * * * *')
+# @kronos.register('*/30 * * * * *')
 class Command(BaseCommand):
     help = 'Closes the specified apptts for voting'
 
@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 "identity": phone,
                 "event_on": appoint.date,
                 "text": appoint.description,
-                "defaults": {'created_on': now}
+                'created_on': now
             }
             try:
                 msg, created = SMSMessage.objects.get_or_create(**data)

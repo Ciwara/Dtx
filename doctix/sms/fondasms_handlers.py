@@ -49,7 +49,7 @@ def handle_incoming_call(payload):
 
 def handle_sms_call(payload, event_type=None):
     logger.debug("handle_sms_call")
-
+    print("handle_sms_call ")
     phone_number = normalized_phonenumber(payload.get('from').strip())
     if phone_number is None:
         return
@@ -90,6 +90,7 @@ def handle_sms_call(payload, event_type=None):
                 msg.handled = True
                 msg.save()
     # send reply/pending messages
+    print("send reply/pending messages")
     return handle_outgoing_request(payload)
 
 

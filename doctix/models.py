@@ -96,6 +96,9 @@ class Doctor(models.Model):
             app.save()
         return app
 
+    def __str__(self):
+        return "{full_name}/{phone}/{location}".format(full_name=full_name, location=location, phone=phone)
+
 
 @python_2_unicode_compatible  # only if you need to support Python 2
 class Appointment(models.Model):

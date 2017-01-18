@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim: ai ts=4 sts=4 et sw=4 nu
+
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
@@ -177,8 +181,8 @@ class Appointment(models.Model):
             text = "{} n'est disponible pour le {} merci. "
         else:
             return None
-        text = text.format(
-            self.doctor.full_name, self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+        text = text.format(self.doctor.full_name,
+                           self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
         return text + "Prompt rétablissement."
 
     @classmethod

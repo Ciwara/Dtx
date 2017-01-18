@@ -97,3 +97,5 @@ wp-content.txt
 *.sqlite3
 
 doctix/migrations/
+
+untitled.sublime-workspace

@@ -96,6 +96,9 @@ class Doctor(models.Model):
             app.save()
         return app
 
+    def __str__(self):
+        return "{full_name}/{phone}/{location}".format(full_name=full_name, location=location, phone=phone)
+
 
 @python_2_unicode_compatible  # only if you need to support Python 2
 class Appointment(models.Model):
@@ -148,8 +151,8 @@ class Appointment(models.Model):
             full_name=self.full_name, gender=self.get_gender(), age=self.get_age(), des=self.description)
         if len(text) == 120:
             text = text[:117] + "..."
-        return text + " Demande RDV {id} pour le {datetime}".format(id=self.post_id,
-                                                                    datetime=self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+        return text + " Demande RDV {id} pour le {datetime}".format(
+            id=self.post_id, datetime=self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
 
     def get_gender(self):
         if self.gender == "Male":
@@ -251,7 +254,7 @@ class SMSMessage(models.Model):
     delivery_status = models.CharField(max_length=75, default=UNKNOWN,
                                        choices=DELIVERY_STATUSES.items())
 
-    def str(self):
+    def __str__(self):
         return self.text
 
     @property

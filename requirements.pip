@@ -2,5 +2,5 @@ Django==1.10.1
 fondasms==0.8.1
 ptpython==0.35
 python-wordpress-xmlrpc==2.3
-django-scheduler-0.8
+django-scheduler==0.8
 django-kronos==1.0

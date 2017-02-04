@@ -10,7 +10,7 @@ from django.conf import settings
 from wordpress_xmlrpc import Client
 from wordpress_xmlrpc.methods.posts import GetPosts
 from doctix.models import (Appointment, Doctor, Department, Specialtie,
-                           PersonalClinicHour, SMSMessage)
+                           DoctorSpecialty, PersonalClinicHour, SMSMessage)
 
 from schedule.models import Calendar
 from schedule.models import Event
@@ -50,10 +50,8 @@ class Command(BaseCommand):
             if len(posts) == 0:
                 break  # no more posts returned
             for doc in posts:
-                specialty_id = self.save_specialty(doc.terms)
                 if doc.slug == "":
                     continue
-
                 cal, s = Calendar.objects.update_or_create(name=doc.title,
                                                            slug=doc.slug)
                 data = {
@@ -65,7 +63,7 @@ class Command(BaseCommand):
                     "date_modified":  self.add_tz(doc.date_modified),
                     "sticky": doc.sticky,
                     "link": doc.link,
-                    "specialty": specialty_id,
+                    # "specialty": specialty_id,
                     "calendar": cal,
                 }
                 for custom in doc.custom_fields:
@@ -81,13 +79,14 @@ class Command(BaseCommand):
                 doctor, created = Doctor.objects.update_or_create(
                     post_id=doc.id, defaults=data)
 
+                self.save_specialty_for_doc(doctor, doc.terms)
             offset = offset + increment
         # update_hrs_opens_closes_per_doc(doctor)
 
     def update_hrs_opens_closes_per_doc(self, doctor):
         pass
 
-    def save_specialty(self, spties):
+    def save_specialty_for_doc(self, doctor, spties):
         """Un doc peut avoir combien de specialité ?
            """
         for spty in spties:
@@ -98,8 +97,8 @@ class Command(BaseCommand):
             }
             specialty = Specialtie(**data)
             specialty.save()
-            break
-        return specialty
+            doc_id, doctor_splty = DoctorSpecialty.objects.update_or_create(
+                doctor=doctor, specialty=specialty)
 
     def update_department(self, wp):
 
@@ -201,7 +200,6 @@ class Command(BaseCommand):
                     try:
                         msg, created = SMSMessage.objects.update_or_create(
                             event_on=appoint_date, defaults=data)
-                        print(created)
                     except Exception as e:
                         print("EEE", e)
                     if appoint.status == Appointment.CONFIRMED:

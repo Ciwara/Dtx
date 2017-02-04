@@ -14,7 +14,7 @@ class Specialtie(models.Model):
     slug = models.CharField("Slug", max_length=200, primary_key=True)
     name = models.CharField("Name", max_length=200)
     description = models.CharField(
-        "Name", max_length=200, null=True, blank=True)
+        "Description", max_length=200, null=True, blank=True)
     update_date = models.DateTimeField("Update date", default=timezone.now)
 
     def __str__(self):
@@ -76,7 +76,6 @@ class Doctor(models.Model):
     date_modified = models.DateTimeField('Date modified')
     sticky = models.BooleanField()
     link = models.CharField("Link", max_length=250)
-    specialty = models.ForeignKey(Specialtie, verbose_name=_("Specailty"))
     calendar = models.ForeignKey(Calendar, verbose_name=_('Calendar'))
 
     @classmethod
@@ -96,8 +95,27 @@ class Doctor(models.Model):
             app.save()
         return app
 
+    def specailties(self):
+        return DoctorSpecialty.objects.filter(doctor=self)
+
     def __str__(self):
-        return "{full_name}/{phone}/{location}".format(full_name=full_name, location=location, phone=phone)
+        return "{full_name}/{phone}/{location}".format(
+            full_name=self.full_name, location=self.location, phone=self.phone)
+
+
+@python_2_unicode_compatible  # only if you need to support Python 2
+class DoctorSpecialty(models.Model):
+
+    doctor = models.ForeignKey(Doctor, verbose_name=_("Doctor"))
+    specialty = models.ForeignKey(Specialtie, verbose_name=_("Specailty"))
+    update_date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('doctor', 'specialty',)
+
+    def __str__(self):
+        return "{doctor}/{specialty}".format(
+            doctor=self.doctor, specialty=self.specialty)
 
 
 @python_2_unicode_compatible  # only if you need to support Python 2

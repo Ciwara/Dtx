@@ -8,7 +8,7 @@ from __future__ import (unicode_literals, absolute_import,
 from django.contrib import admin
 
 from doctix.models import (SMSMessage, Appointment, Doctor, Department,
-                           PersonalClinicHour, Specialtie)
+                           DoctorSpecialty, PersonalClinicHour, Specialtie)
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
@@ -30,8 +30,8 @@ class PersonalClinicHourInline(admin.TabularInline):
 
 class DoctorAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'slug', 'post_id', 'location', 'phone',
-                    'date', 'email', 'specialty')
-    list_filter = ('specialty', 'date_modified', 'date', 'location', 'phone')
+                    'date', 'email', )
+    list_filter = ('date_modified', 'date', 'location', 'phone')
     inlines = [
         PersonalClinicHourInline,
         # AppointmentInline,
@@ -40,6 +40,11 @@ class DoctorAdmin(admin.ModelAdmin):
 
 class SpecialtieAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'update_date',)
+    list_filter = ('update_date',)
+
+
+class DoctorSpecialtyAdmin(admin.ModelAdmin):
+    list_display = ('doctor', 'specialty', 'update_date',)
     list_filter = ('update_date',)
 
 
@@ -55,6 +60,7 @@ class PersonalClinicHourAdmin(admin.ModelAdmin):
     list_filter = ('doctor', 'day_name', 'open_hr', 'close_hr')
 
 
+admin.site.register(DoctorSpecialty, DoctorSpecialtyAdmin)
 admin.site.register(Specialtie, SpecialtieAdmin)
 admin.site.register(Doctor, DoctorAdmin)
 admin.site.register(Appointment, AppointmentAdmin)

@@ -35,9 +35,9 @@ def echo(message):
 
 
 def response_appoint(message):
+    print("message", message)
     try:
         kw, args = message.content.split(" ", 1)
-        # print(args)
         post_id = args.split(" ", 1)[0]
         resp = args.split(" ", 1)[1]
     except Exception as e:
@@ -68,10 +68,13 @@ def response_appoint(message):
 
 
 def doctix_sms_handler(message):
-
+    '''
+    format SMS
+        d
+    '''
     # if message.content.startswith('d '):
     #     message.text = message.content[0:]
-        # message.save()
+    # message.save()
 
     logger.debug("Incoming SMS from {}: {}".format(
         message.identity, message.content))
@@ -82,7 +85,7 @@ def doctix_sms_handler(message):
 
     for keyword, handler in keywords.items():
         if message.content.lower().startswith(keyword):
-            return handler(message)
             print("keyword")
+            return handler(message)
     # message.respond("Message non pris en charge.")
     return False

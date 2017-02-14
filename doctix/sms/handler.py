@@ -35,7 +35,9 @@ def echo(message):
 
 
 def response_appoint(message):
-    print("message", message)
+    """
+    """
+    logger.info("response_appoint")
     try:
         kw, args = message.content.split(" ", 1)
         post_id = args.split(" ", 1)[0]
@@ -46,24 +48,22 @@ def response_appoint(message):
     try:
         doc = Doctor.objects.get(phone=message.identity)
     except Exception as e:
-        print(e)
+        logger.error(e)
     try:
-        print("Get Appointment")
         appoint = Appointment.objects.get(post_id=post_id)
-        if appoint.phone == "":
-            return False
-        resp_ = appoint.format_doct_answer_sms(resp)
-        print("Reponse ", resp_)
-        if not resp_:
-            message.respond(
-                "Reponse incorrecte. Contactez l'assistance doctix.")
-            return True
-        args = resp_
-        message.identity = appoint.phone
     except Exception as e:
-        print(e)
-        args = "{p_id} n existe pas".format(p_id=post_id)
-    message.respond(args)
+        logger.error(e)
+        message.respond("{p_id} n existe pas".format(p_id=post_id))
+        return True
+    if appoint.phone == "":
+        return False
+    message.identity = appoint.phone
+    resp = appoint.format_doct_answer_sms(resp)
+    logger.info("Reponse " + resp)
+    if not resp:
+        resp = "Reponse incorrecte. Contactez l'assistance doctix."
+
+    message.respond(resp)
     return True
 
 
@@ -85,7 +85,7 @@ def doctix_sms_handler(message):
 
     for keyword, handler in keywords.items():
         if message.content.lower().startswith(keyword):
-            print("keyword")
+            logger.info("keyword")
             return handler(message)
     # message.respond("Message non pris en charge.")
     return False

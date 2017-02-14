@@ -138,7 +138,7 @@ class Command(BaseCommand):
         offset = 0
         increment = 20
 
-        now = timezone.now()
+        # now = timezone.now()
         while True:
             posts = wp.call(GetPosts({'post_type': 'appointment',
                                       'number': increment, 'offset': offset}))
@@ -184,52 +184,60 @@ class Command(BaseCommand):
                     if custom['key'] == 'iva_appt_phone':
                         data.update({"phone": custom['value']})
                     if custom['key'] == 'iva_appt_status':
-                        data.update({"status": custom['value']})
+                        status = custom['value']
+                        # data.update({"status": custom['value']})
 
                 data.update({"appointmentdatetime":
                              self.timestamp_date_with_tz(appointmentdate, appointmenttime)})
                 try:
                     appoint, created = Appointment.objects.update_or_create(
-                        post_id=post.id, defaults=data)
+                        post_id=post.id, status=status, defaults=data)
                 except Exception as e:
                     logger.error(e)
                     continue
-                logger.info(appoint.doctor)
-                phone = appoint.doctor.phone
-                appoint_date = appoint.date
-                if appoint.status != Appointment.CANCELLED:
-                    if not phone:
-                        # phone = 76433890
-                        continue
-                        # print(
-                        #     u"{} n'a pas de numéro de téléphone.".format(appoint.doctor.full_name))
-                        # return
-                    data = {
-                        'direction': SMSMessage.OUTGOING,
-                        'identity': phone,
-                        'event_on': appoint_date,
-                        'text': appoint.format_notiv_doct_sms(),
-                        'created_on': now,
-                        # 'handled': True,
-                    }
-                    try:
-                        msg, created = SMSMessage.objects.update_or_create(
-                            event_on=appoint_date, defaults=data)
-                    except Exception as e:
-                        logger.error(e)
-                    if appoint.status == Appointment.CONFIRMED:
-                        data = {
-                            'title': appoint.description,
-                            'start': appoint.appointmentdatetime,
-                            'end': appoint.appointmentdatetime + datetime.timedelta(minutes=30),
-                            # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
-                            # 'rule': rule,
-                            'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
-                        }
-                        event, s = Event.objects.update_or_create(data)
-                    logger.info(
-                        'Successfully save appointment : {}'.format(app.title))
+
+                if appoint.status == Appointment.CANCELLED:
+                    self.remove_event_for_appointment(appoint)
+                    logger.info("remove")
+                else:
+                    self.add_smsmessage(appoint)
             offset = offset + increment
+
+    def add_smsmessage(self, appoint):
+        logger.info("Add SMS Message")
+        appoint_date = appoint.date
+        doctor_phone = appoint.doctor.phone
+        if doctor_phone:
+            # phone = 76433890
+            data = {
+                'direction': SMSMessage.OUTGOING,
+                'identity': doctor_phone,
+                'event_on': appoint_date,
+                'text': appoint.format_notiv_doct_sms(),
+                'created_on': timezone.now(),
+                # 'handled': True,
+            }
+            try:
+                msg, created = SMSMessage.objects.update_or_create(
+                    event_on=appoint_date, defaults=data)
+            except Exception as e:
+                logger.error(e)
+
+    def remove_msg_for_appoint(self, appoint):
+        logger.info("Cancel {}".format(appoint))
+        msg = SMSMessage.objects.get(appointment=appoint)
+        msg.delete()
+
+    def remove_event_for_appointment(self, appoint):
+        data = {
+            'title': appoint.description,
+            'start': appoint.appointmentdatetime,
+            'end': appoint.appointmentdatetime + datetime.timedelta(minutes=30),
+            # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
+            # 'rule': rule,
+            'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
+        }
+        # event, s = Event.objects.update_or_create(data)
 
     # def format_notiv_sms_appointment(self, appoint):
     #     text = "Demande RDV num {id}. {full_name} {des}".format(

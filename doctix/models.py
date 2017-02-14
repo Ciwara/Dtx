@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
-from schedule.models import Calendar
+from schedule.models import Calendar, Event
 
 
 @python_2_unicode_compatible  # only if you need to support Python 2
@@ -193,13 +193,29 @@ class Appointment(models.Model):
             p = ""
         return "{}{}".format(year, p)
 
+    def add_event(self):
+        text = "Patient {full_name} {gender} {age} Motif {des}".format(
+            full_name=self.full_name, gender=self.get_gender(), age=self.get_age(), des=self.description)
+
+        calendar = Calendar.objects.get(slug=self.doctor.slug)
+        start = self.appointmentdatetime
+        data = {
+            'title': text,
+            'end': self.appointmentdatetime + timezone.timedelta(minutes=30),
+            # 'end_recurring_period': datetime.datetime(2009, 6, 1, 0, 0),
+            # 'rule': rule,
+        }
+        event, created = Event.objects.update_or_create(
+            calendar=calendar, start=start, defaults=data)
+
     def format_doct_answer_sms(self, resp):
         ok_list = ["ok", "yes", "accord", "oui"]
         decline_list = ["no", "non", "pas dispo", "absent", "occupé"]
         if len([p for p in ok_list if p in resp.lower()]) > 0:
-            text = "{} a confirmé votre RDV pour le {}. "
+            text = "{} a confirme votre RDV pour le {}. "
+            self.add_event()
         elif len([p for p in decline_list if p in resp.lower()]) > 0:
-            text = "{} n'est disponible pour le {} merci. "
+            text = "{} n est pas disponible pour le {} merci. "
         else:
             return None
         text = text.format(self.doctor.full_name,

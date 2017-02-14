@@ -19,8 +19,8 @@ class SMSMessageAdmin(admin.ModelAdmin):
 class AppointmentAdmin(admin.ModelAdmin):
 
     """docstring for AppointmentAdmin"""
-    list_display = ('post_id', 'email', 'gender', 'appointmentdatetime',
-                    'dob', 'description', 'phone', 'status')
+    list_display = ('post_id', 'status', 'doctor', 'gender', 'description',
+                    'appointmentdatetime', 'date_modified', 'dob', 'phone', 'email')
     list_filter = ('status', 'doctor', 'date', 'email', 'phone')
 
 

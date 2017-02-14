@@ -17,12 +17,14 @@ from django.conf import settings
 from django.conf.urls import url, include, static
 from django.views.generic.base import TemplateView
 from django.contrib import admin
+from doctix import views
 from fondasms import views as fonda_views
 
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^$', TemplateView.as_view(template_name="homepage.html"),),
+    url(r'^$', views.index, name='index'),
+    url(r'^home/$', TemplateView.as_view(template_name="homepage.html"),),
     url(r'^fullcalendar/',
         TemplateView.as_view(template_name="fullcalendar.html"), name='fullcalendar'),
     url(r'^schedule/', include('schedule.urls')),

@@ -99,6 +99,61 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'null': {
+            'level': 'DEBUG',
+            'class': 'logging.NullHandler',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'formatter': 'default',
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['null', 'file'],
+            'propagate': True,
+            'level': 'INFO',
+        },
+        'django.request': {
+            'handlers': ['mail_admins', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'iso8601': {
+            'handlers': ['null'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        '': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        }
+    },
+    'formatters': {
+        'brief': {
+            'format': '%(asctime)s %(message)s'
+        },
+        'default': {
+            'format': '%(asctime)s %(levelname)-8s %(name)-15s %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        }
+    }
+}
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 

@@ -2,6 +2,9 @@ import re
 import kronos
 import datetime
 import pytz
+import logging
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 from django.utils import timezone
 from django.core.management.base import BaseCommand
@@ -29,10 +32,13 @@ class Command(BaseCommand):
         # retrives the list of all posts in the blog. Optional: you can supply
         # filters and fields to sort by.
         wp = Client(settings.CLIENT_URL, settings.LOGIN_WP, settings.PASS_WP)
+        logger.info("Department")
         self.update_department(wp)
+        logger.info("Update Doctor")
         self.update_doctor_info(wp)
+        logger.info("Appointment")
         self.update_appointment(wp)
-        self.stdout.write(self.style.SUCCESS('Successfully update finist '))
+        logger.info("Successfully update finist")
 
     def add_tz(self, date):
         tz = pytz.timezone(settings.TIME_ZONE)
@@ -163,8 +169,12 @@ class Command(BaseCommand):
                         data.update(
                             {"dob": datetime.date.fromtimestamp(timestamp)})
                     if custom['key'] == 'iva_appt_doctor':
-                        data.update({"doctor": Doctor.objects.get(
-                            post_id=int(custom['value']))})
+                        try:
+                            data.update({"doctor": Doctor.objects.get(
+                                post_id=int(custom['value']))})
+                        except Exception as e:
+                            logger.error(e)
+
                     if custom['key'] == 'iva_appt_email':
                         data.update({"email": custom['value']})
                     if custom['key'] == 'iva_appt_lastname':
@@ -178,8 +188,13 @@ class Command(BaseCommand):
 
                 data.update({"appointmentdatetime":
                              self.timestamp_date_with_tz(appointmentdate, appointmenttime)})
-                appoint, created = Appointment.objects.update_or_create(
-                    post_id=post.id, defaults=data)
+                try:
+                    appoint, created = Appointment.objects.update_or_create(
+                        post_id=post.id, defaults=data)
+                except Exception as e:
+                    logger.error(e)
+                    continue
+                logger.info(appoint.doctor)
                 phone = appoint.doctor.phone
                 appoint_date = appoint.date
                 if appoint.status != Appointment.CANCELLED:
@@ -201,7 +216,7 @@ class Command(BaseCommand):
                         msg, created = SMSMessage.objects.update_or_create(
                             event_on=appoint_date, defaults=data)
                     except Exception as e:
-                        print("EEE", e)
+                        logger.error(e)
                     if appoint.status == Appointment.CONFIRMED:
                         data = {
                             'title': appoint.description,
@@ -212,8 +227,8 @@ class Command(BaseCommand):
                             'calendar': Calendar.objects.get(slug=appoint.doctor.slug)
                         }
                         event, s = Event.objects.update_or_create(data)
-                    # self.stdout.write(self.style.SUCCESS(
-                    #     'Successfully save appointment : {}'.format(app.title)))
+                    logger.info(
+                        'Successfully save appointment : {}'.format(app.title))
             offset = offset + increment
 
     # def format_notiv_sms_appointment(self, appoint):

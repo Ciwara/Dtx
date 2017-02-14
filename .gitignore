@@ -101,3 +101,5 @@ doctix/migrations/
 untitled.sublime-workspace
 
 deployment.fad
+
+*.old

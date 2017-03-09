@@ -12,7 +12,8 @@ from doctix.models import (SMSMessage, Appointment, Doctor, Department,
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
-    list_display = ('direction', 'identity', 'event_on', 'text', 'handled')
+    list_display = (
+        'direction', 'identity', 'event_on', 'text', 'handled', 'delivery_status')
     list_filter = ('direction', 'event_on', 'handled')
 
 

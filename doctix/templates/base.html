@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load staticfiles i18n %}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" xml:lang="{{ LANGUAGE_CODE }}" lang="{{ LANGUAGE_CODE }}">
     <head>
@@ -19,6 +19,8 @@
         <!-- Latest compiled and minified CSS -->
         <!-- <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.6.7/css/bootstrap.min.css"> -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/paper/bootstrap.min.css">
+
+        <link  rel="stylesheet" href="{% static "dtx.css" %}">
         <!-- Optional theme -->
         <!-- <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.6.7/css/bootstrap-theme.min.css"> -->
         <!-- Latest compiled and minified JavaScript -->
@@ -29,7 +31,7 @@
         {% endblock %}
 
     </head>
-
+        {% include "_menu.html" %}
     <body>
     <div class="container">
         <div class="row">

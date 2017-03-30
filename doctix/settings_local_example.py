@@ -23,10 +23,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'h2qe#ptzk8e(_242pmt)kp*tl-i^s#(_wk5jwu5$#@35bz_a6w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = False
 
 ALLOWED_HOSTS = ['*']
-
+DEBUG = False
+DEFAULT_FROM_EMAIL = 'faddev@gmail.com'
 # Application definition
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases

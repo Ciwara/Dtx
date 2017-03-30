@@ -16,9 +16,11 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls import url, include, static
 from django.views.generic.base import TemplateView
+from django.contrib.auth import views as auth_views
 from django.contrib import admin
 from doctix import views
 from fondasms import views as fonda_views
+from .forms import LoginForm
 
 
 urlpatterns = [
@@ -28,8 +30,11 @@ urlpatterns = [
     url(r'^fullcalendar/',
         TemplateView.as_view(template_name="fullcalendar.html"), name='fullcalendar'),
     url(r'^schedule/', include('schedule.urls')),
-
-    # # Android API
+    url(r'^sms-sender/$', views.smssender, name='smssender'),
+    url(r'^accounts/login/$', auth_views.login, {'template_name': 'login.html',
+     'authentication_form': LoginForm}, name='login'),
+    url(r'^logout/$', auth_views.logout, {'next_page': '/'}, name='logout'),
+    # Android API
     url(r'^fondasms/?$', fonda_views.fondasms_handler,
         {'handler_module': 'doctix.sms.fondasms_handlers',
          'send_automatic_reply': False,

@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -174,6 +173,7 @@ USE_TZ = True
 # print(STATIC_ROOT)
 STATIC_URL = '/static/'
 
+LOGIN_REDIRECT_URL = '/' # It means home view
 LOGIN_WP = 'xxxx'
 PASS_WP = 'xxxx'
 

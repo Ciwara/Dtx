@@ -1,0 +1,31 @@
+{% extends "site_base.html" %}
+
+{% load i18n %}
+
+{% block head_title %}{% endblock %}
+
+{% block body %}
+    <h1>SMS </h1>
+    <form action="/sms-sender/" method="post" role="form" class="col-md-9 go-right">{% csrf_token %}
+        <p>{{ form.non_field_errors }}</p>
+        <div class="form-group">
+            {{ form.identities.errors }}
+            {{ form.identities }}<!--
+            <input id="phone" name="phone" type="tel" class="form-control" required> -->
+            <label for="phone">{{ form.identities.label_tag }}</label>
+        </div>
+        <div class="form-group">
+            {{ form.text.errors }}
+            {{ form.text }}
+            <label for="message">{{ form.text.label_tag }}</label>
+        </div>
+        <input type="submit" value="Submit" />
+    </form>
+{% endblock %}
+
+<div class="container">
+    <div class="row">
+
+        <p class="bg-success" style="padding:10px;margin-top:20px;clear:both"><small><a href="http://css-tricks.com/float-labels-css/" target="_blank">Link</a> to original article</small></p>
+    </div>
+</div>

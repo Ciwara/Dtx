@@ -166,11 +166,13 @@ class Appointment(models.Model):
     # @property
     def format_notiv_doct_sms(self):
         text = "Patient {full_name} {gender} {age} Motif {des}".format(
-            full_name=self.full_name, gender=self.get_gender(), age=self.get_age(), des=self.description)
+            full_name=self.full_name, gender=self.get_gender(),
+            age=self.get_age(), des=self.description)
         if len(text) == 120:
             text = text[:117] + "..."
         return text + " Demande RDV {id} pour le {datetime}".format(
-            id=self.post_id, datetime=self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+            id=self.post_id, datetime=self.appointmentdatetime.strftime(
+                "%d %b %Y a %Hh %Mm"))
 
     def get_gender(self):
         if self.gender == "Male":
@@ -185,8 +187,8 @@ class Appointment(models.Model):
         if not self.dob:
             return ""
         today = date.today()
-        year = today.year - self.dob.year - ((today.month, today.day)
-                                             < (self.dob.month, self.dob.day))
+        year = today.year - self.dob.year - (
+            (today.month, today.day) < (self.dob.month, self.dob.day))
         if year > 1:
             p = "ans" if year > 1 else "an"
         else:
@@ -195,7 +197,8 @@ class Appointment(models.Model):
 
     def update_or_create_event(self):
         text = "Patient {full_name} {gender} {age} Motif {des}".format(
-            full_name=self.full_name, gender=self.get_gender(), age=self.get_age(), des=self.description)
+            full_name=self.full_name, gender=self.get_gender(),
+            age=self.get_age(), des=self.description)
 
         # calendar = Calendar.objects.get(slug=self.doctor.slug)
         start = self.appointmentdatetime
@@ -212,7 +215,7 @@ class Appointment(models.Model):
     def remove_event(self):
         try:
             event = Event.objects.get(calendar=self.doctor.calendar,
-                start=self.appointmentdatetime)
+                                      start=self.appointmentdatetime)
             event.delete()
         except Exception as e:
             print(e)
@@ -222,17 +225,16 @@ class Appointment(models.Model):
         decline_list = ["no", "non", "pas dispo", "absent", "occupé"]
         if len([p for p in ok_list if p in resp.lower()]) > 0:
             # text = "{} a confirme votre RDV pour le {}. "
-            text = """Merci de confirmer votre rendez-vous en payant vos
-                      frais de consultation via Orange Money : 74 10 16 22 ou
-                      Mobicash: 66 66 88 13."""
+            text = "Merci de confirmer votre rendez-vous en payant vos frais de consultation via Orange Money : 74 10 16 22 ou Mobicash: 66 66 88 13."
             self.update_or_create_event()
         elif len([p for p in decline_list if p in resp.lower()]) > 0:
             text = "{} n est pas disponible pour le {} merci."
             self.remove_event()
         else:
             return None
-        text = text.format(self.doctor.full_name,
-                           self.appointmentdatetime.strftime("%d %b %Y a %Hh %Mm"))
+        text = text.format(
+            self.doctor.full_name, self.appointmentdatetime.strftime(
+                "%d %b %Y a %Hh %Mm"))
         return text + " Prompt rétablissement."
 
     @classmethod
@@ -338,4 +340,5 @@ class PersonalClinicHour(models.Model):
 
     def __str__(self):
         return "{doc} {day_name} {open_hr} {close_hr}".format(
-            doc=self.doctor, day_name=self.day_name, open_hr=self.open_hr, close_hr=self.close_hr)
+            doc=self.doctor, day_name=self.day_name, open_hr=self.open_hr,
+            close_hr=self.close_hr)

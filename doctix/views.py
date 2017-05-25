@@ -9,7 +9,7 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 
 from .models import Appointment, SMSMessage
-from .forms import SMSForm, LoginForm
+from .forms import SMSForm
 from doctix.numbers import (normalized_phonenumber)
 
 
@@ -20,7 +20,7 @@ def smssender(request):
         # create a form instance and populate it with data from the request:
         form = SMSForm(request.POST)
         # check whether it's valid:
-        print(form)
+        # print(form)
         if form.is_valid():
             identities = form.get_number('identities')
             message = request.POST.get('text')
@@ -28,7 +28,7 @@ def smssender(request):
                 phone_number = normalized_phonenumber(ident)
                 msg, created = SMSMessage.objects.get_or_create(
                     direction=SMSMessage.OUTGOING,
-                    identity=ident,
+                    identity=phone_number,
                     # event_on=received_on,
                     text=message,
                     defaults={'created_on': timezone.now()})
@@ -40,9 +40,10 @@ def smssender(request):
 
     return render(request, 'sendsms.html', {'form': form})
 
+
 def index(request):
     latest_question_list = Appointment.objects.order_by('-date')[:5]
     context = {}
     context.update({
-        'latest_question_list':latest_question_list})
+        'latest_question_list': latest_question_list})
     return render(request, 'index.html', context)

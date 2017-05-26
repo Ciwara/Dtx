@@ -228,14 +228,15 @@ class Appointment(models.Model):
             text = "Merci de confirmer votre rendez-vous en payant vos frais de consultation via Orange Money : 74 10 16 22 ou Mobicash: 66 66 88 13."
             self.update_or_create_event()
         elif len([p for p in decline_list if p in resp.lower()]) > 0:
-            text = "{} n est pas disponible pour le {} merci."
+            # text = "{} n est pas disponible pour le {} merci."
+            text = "{} n'est pas disponible pour {}. Merci de choisir une autre date ou heure."
             self.remove_event()
         else:
             return None
         text = text.format(
             self.doctor.full_name, self.appointmentdatetime.strftime(
                 "%d %b %Y a %Hh %Mm"))
-        return text + " Prompt rétablissement."
+        return text + " Prompt rétablissement. Doctix."
 
     @classmethod
     def get_or_create(cls, data):

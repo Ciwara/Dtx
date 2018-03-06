@@ -149,17 +149,18 @@ class Command(BaseCommand):
                     'firstname': post.title,
                     'post_id': post.id,
                     'slug': post.slug,
-                    'date':  self.add_tz(post.date),
+                    'date': self.add_tz(post.date),
                     'guid': post.guid
                 }
                 for custom in post.custom_fields:
                     if custom['key'] == 'iva_appt_gender':
                         data.update({"gender": custom['value']})
-                    if custom['key'] == 'iva_appt_appointmentdate':
+                    if custom['key'] == 'iva_appt_appointmentdate' and custom['value'] != "":
                         appointmentdate = int(custom['value'])
                     if custom['key'] == 'iva_appt_appointmenttime':
                         appointmenttime = custom['value']
-                    if custom['key'] == 'iva_appt_department':
+                    if custom['key'] == 'iva_appt_department' and custom['value'] != "":
+                        print(custom['value'], "iva_appt_department")
                         data.update({"department": Department.objects.get(
                             post_id=int(custom['value']))})
                     if custom['key'] == 'iva_appt_description':
@@ -187,9 +188,11 @@ class Command(BaseCommand):
                         status = custom['value']
                         # data.update({"status": custom['value']})
 
-                data.update({"appointmentdatetime":
-                             self.timestamp_date_with_tz(appointmentdate, appointmenttime)})
                 try:
+
+                    data.update(
+                        {"appointmentdatetime": self.timestamp_date_with_tz(
+                         appointmentdate, appointmenttime)})
                     appoint, created = Appointment.objects.update_or_create(
                         post_id=post.id, status=status, defaults=data)
                 except Exception as e:
